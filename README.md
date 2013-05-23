@@ -26,6 +26,13 @@ In your ApplicationController:
       SessionTracker.new("user", $redis).track(session[:session_id])
     end
 
+By default, the active_sessions are stored in redis for one hour. If you would like to keep the session for longer, you can set an expiry time in the constructor. Example below
+
+    def track_active_sessions
+      SessionTracker.new("user", $redis, 365*24*60*60).track(session[:session_id])
+    end
+This can be helpful if you want the historical data to be tracked. This data can be fed into charts and the sysadmin can track the 'active users' in the system.
+
 Then to view the current state:
 
     SessionTracker.new("user", $redis).active_users

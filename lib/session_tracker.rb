@@ -3,16 +3,17 @@ require 'time'
 class SessionTracker
   ONE_HOUR = 60 * 60
 
-  def initialize(type, redis = $redis)
+  def initialize(type, redis = $redis, expiry_time = ONE_HOUR)
     @type = type
     @redis = redis
+    @expiry_time = expiry_time
   end
 
   def track(id, time = Time.now)
     return unless id
     key = key_for(time)
     @redis.sadd(key, id)
-    @redis.expire(key, ONE_HOUR - 60)
+    @redis.expire(key, @expiry_time - 60)
   rescue
     # This is called for every request and is probably not essential for the app
     # so we don't want to raise errors just because redis is down for a few seconds.
@@ -34,6 +35,6 @@ class SessionTracker
   end
 
   def key_for(time)
-    "active_#{@type}_sessions_minute_#{time.strftime("%M")}"
+    "active_#{@type}_sessions_minute_#{time.strftime("%Y%m%d%H%M")}"
   end
 end

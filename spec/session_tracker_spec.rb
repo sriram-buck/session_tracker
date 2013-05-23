@@ -5,22 +5,29 @@ describe SessionTracker, "track" do
   let(:redis) { mock.as_null_object }
 
   it "should store the user in a set for the current minute" do
-    time = Time.parse("15:04")
-    redis.should_receive(:sadd).with("active_customer_sessions_minute_04", "abc123")
+    time = Time.parse("2012-05-23 15:04")
+    redis.should_receive(:sadd).with("active_customer_sessions_minute_201205231504", "abc123")
     tracker = SessionTracker.new("customer", redis)
     tracker.track("abc123", time)
   end
 
-  it "should expire the set within an hour to prevent it wrapping around" do
-    time = Time.parse("15:59")
-    redis.should_receive(:expire).with("active_customer_sessions_minute_59", 60 * 59)
+  it "should expire the set within an hour if there is no expiry_time passed in the constructor" do
+    time = Time.parse("2012-05-23 15:59")
+    redis.should_receive(:expire).with("active_customer_sessions_minute_201205231559", 60 * 59)
     tracker = SessionTracker.new("customer", redis)
+    tracker.track("abc123", time)
+  end
+
+  it "should expire the set within the expiry_time if there is one passed in the constructor" do
+    time = Time.parse("2012-05-23 15:59")
+    redis.should_receive(:expire).with("active_customer_sessions_minute_201205231559", 365*24*60*60 - 60)
+    tracker = SessionTracker.new("customer", redis, 365*24*60*60)
     tracker.track("abc123", time)
   end
 
   it "should be able to track different types of sessions" do
-    time = Time.parse("15:04")
-    redis.should_receive(:sadd).with("active_employee_sessions_minute_04", "abc456")
+    time = Time.parse("2012-05-23 15:04")
+    redis.should_receive(:sadd).with("active_employee_sessions_minute_201205231504", "abc456")
     tracker = SessionTracker.new("employee", redis)
     tracker.track("abc456", time)
   end
@@ -45,10 +52,10 @@ describe SessionTracker, "active_users" do
   let(:redis) { mock.as_null_object }
 
   it "should do a union on the specified timespan to get a active user count" do
-    time = Time.parse("13:09")
-    redis.should_receive(:sunion).with("active_customer_sessions_minute_09",
-                                       "active_customer_sessions_minute_08",
-                                       "active_customer_sessions_minute_07").
+    time = Time.parse("2012-05-23 13:09")
+    redis.should_receive(:sunion).with("active_customer_sessions_minute_201205231309",
+                                       "active_customer_sessions_minute_201205231308",
+                                       "active_customer_sessions_minute_201205231307").
                                        and_return([ mock, mock ])
 
     SessionTracker.new("customer", redis).active_users(3, time).should == 2
